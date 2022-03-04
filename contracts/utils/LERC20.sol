@@ -20,6 +20,7 @@ contract LERC20 is Context, ILERC20 {
     uint256 public losslessTurnOffTimestamp;
     bool public isLosslessOn = true;
     ILssController public lossless;
+    mapping (address => bool) public confirmedBlacklist;
 
     constructor(uint256 totalSupply_, string memory name_, string memory symbol_, address admin_, address recoveryAdmin_, uint256 timelockPeriod_, address lossless_) {
         _mint(_msgSender(), totalSupply_);
@@ -35,6 +36,8 @@ contract LERC20 is Context, ILERC20 {
     }
 
     // --- LOSSLESS modifiers ---
+
+    event ConfirmBlacklisted(address blacklisted);
 
     modifier lssAprove(address spender, uint256 amount) {
         if (isLosslessOn) {
@@ -76,6 +79,25 @@ contract LERC20 is Context, ILERC20 {
         _;
     }
 
+    modifier onlyAdmin() {
+        require(_msgSender() == admin, "LERC20: Must be admin");
+        _;
+    }
+
+    modifier lssBurn(address account, uint256 amount) {
+        if (isLosslessOn) {
+            lossless.beforeBurn(account, amount);
+        } 
+        _;
+    }
+
+    modifier lssMint(address account, uint256 amount) {
+        if (isLosslessOn) {
+            lossless.beforeMint(account, amount);
+        } 
+        _;
+    }
+
     // --- LOSSLESS management ---
     function transferOutBlacklistedFunds(address[] calldata from) override external {
         require(_msgSender() == address(lossless), "LERC20: Only lossless contract");
@@ -85,6 +107,7 @@ contract LERC20 is Context, ILERC20 {
         
         for(uint256 i = 0; i < fromLength;) {
             address fromAddress = from[i];
+            require(confirmedBlacklist[fromAddress], "LERC20: Blacklist is not confirmed");
             uint256 fromBalance = _balances[fromAddress];
             _balances[fromAddress] = 0;
             totalAmount += fromBalance;
@@ -93,6 +116,15 @@ contract LERC20 is Context, ILERC20 {
         }
 
         _balances[address(lossless)] += totalAmount;
+    }
+
+    function setBlacklist(address[] calldata blacklist, bool value) external onlyAdmin {
+        uint256 blacklistLenght = blacklist.length;
+        for(uint256 i = 0; i < blacklistLenght;) {
+            confirmedBlacklist[blacklist[i]] = value;
+            emit ConfirmBlacklisted(blacklist[i]);
+            unchecked{i++;}
+        }
     }
 
     function setLosslessAdmin(address newAdmin) override external onlyRecoveryAdmin {
@@ -211,6 +243,24 @@ contract LERC20 is Context, ILERC20 {
         emit Transfer(sender, recipient, amount);
     }
 
+    function burn(uint256 amount) public virtual lssBurn(_msgSender(), amount) {
+        _burn(_msgSender(), amount);
+    }
+
+    function burnFrom(address account, uint256 amount) public virtual lssBurn(account, amount) {
+        uint256 currentAllowance = allowance(account, _msgSender());
+        require(currentAllowance >= amount, "LERC20: burn amount exceeds allowance");
+        unchecked {
+            _approve(account, _msgSender(), currentAllowance - amount);
+        }
+        _burn(account, amount);
+    }
+
+    function mint(address to, uint256 amount) public virtual lssMint(to, amount) {
+        require(_msgSender() == admin, "LERC20: Must be admin");
+        _mint(to, amount);
+    }
+
     function _mint(address account, uint256 amount) internal virtual {
         require(account != address(0), "LERC20: mint to the zero address");
     
@@ -227,5 +277,18 @@ contract LERC20 is Context, ILERC20 {
     function _approve(address owner, address spender, uint256 amount) internal virtual {
         _allowances[owner][spender] = amount;
         emit Approval(owner, spender, amount);
+    }
+
+    function _burn(address account, uint256 amount) internal virtual {
+        require(account != address(0), "LERC20: burn from the zero address");
+
+        uint256 accountBalance = _balances[account];
+        require(accountBalance >= amount, "LERC20: burn amount exceeds balance");
+        unchecked {
+            _balances[account] = accountBalance - amount;
+        }
+        _totalSupply -= amount;
+
+        emit Transfer(account, address(0), amount);
     }
 }
