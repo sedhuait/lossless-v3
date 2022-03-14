@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Unlicensed
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -10,7 +10,7 @@ import "./Interfaces/ILosslessController.sol";
 import "./Interfaces/ILosslessStaking.sol";
 import "./Interfaces/ILosslessReporting.sol";
 import "./Interfaces/ILosslessGovernance.sol";
-
+import "hardhat/console.sol";
 /// @title Lossless Governance Contract
 /// @notice The governance contract is in charge of handling the voting process over the reports and their resolution
 contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgradeable, PausableUpgradeable {
@@ -99,13 +99,13 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
 
     function pause() public onlyLosslessPauseAdmin  {
         _pause();
-    }    
-    
+    }
+
     function unpause() public onlyLosslessPauseAdmin {
         _unpause();
     }
 
-    
+
     /// @notice This function gets the contract version
     /// @return Version of the contract
     function getVersion() external pure returns (uint256) {
@@ -538,7 +538,7 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
     function retrieveCompensation() override public whenNotPaused {
         require(!compensation[msg.sender].payed, "LSS: Already retrieved");
         require(compensation[msg.sender].amount != 0, "LSS: No retribution assigned");
-        
+
         compensation[msg.sender].payed = true;
 
         losslessReporting.retrieveCompensation(msg.sender, compensation[msg.sender].amount);
@@ -549,10 +549,26 @@ contract LosslessGovernance is ILssGovernance, Initializable, AccessControlUpgra
 
     }
 
+
+    /// @notice This lets an erroneously reported smart account to retrieve compensation via an EOA (Wallet Account)
+    /// @param _addr Address of Smart Contract
+    function retrieveCompensationForContract(address _addr) override public whenNotPaused {
+        // console.log("Incoming Address", _addr);
+        // console.log("Is it a contract", isContract(_addr));
+        // console.log("Balance", compensation[_addr].amount);
+        require(isContract(_addr), "Not a valid Contract Address");
+        require(!compensation[_addr].payed, "LSS: Already retrieved");
+        require(compensation[_addr].amount != 0, "LSS: No retribution assigned");
+        compensation[_addr].payed = true;
+        losslessReporting.retrieveCompensation(_addr, compensation[_addr].amount);
+        emit CompensationRetrieval(_addr, compensation[_addr].amount);
+        compensation[_addr].amount = 0;
+    }
+
     ///@notice This function verifies is an address belongs to a contract
     ///@param _addr address to verify
     function isContract(address _addr) private view returns (bool){
-         uint32 size;
+        uint32 size;
         assembly {
             size := extcodesize(_addr)
         }

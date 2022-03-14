@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
@@ -9,7 +9,6 @@ import "./Interfaces/ILosslessERC20.sol";
 import "./Interfaces/ILosslessController.sol";
 import "./Interfaces/ILosslessGovernance.sol";
 import "./Interfaces/ILosslessReporting.sol";
-
 /// @title Lossless Reporting Contract
 /// @author Lossless.cash
 /// @notice The Reporting smart contract is in charge of handling all the parts related to creating new reports
@@ -245,11 +244,9 @@ contract LosslessReporting is ILssReporting, Initializable, ContextUpgradeable, 
 
         losslessController.addToBlacklist(_account);
         reportInfo[reportId].reportedAddress = _account;
-        
         losslessController.activateEmergency(_token);
 
         emit ReportSubmission(_token, _account, reportId, reportingAmount);
-
         return reportId;
     }
 

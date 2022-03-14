@@ -1,4 +1,5 @@
 {
     "solidity.compileUsingRemoteVersion": "v0.8.4+commit.c7e474f2",
-    "solidity.defaultCompiler": "remote"
+    "solidity.defaultCompiler": "remote",
+    "solidity.compileUsingLocalVersion": "/Users/snallayan/work/lss/lossless-v3/soljson-v0.8.12+commit.f00d7308.js"
 }

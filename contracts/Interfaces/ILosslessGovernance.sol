@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity >=0.8.0;
 
 import "./ILosslessERC20.sol";
 import "./ILosslessStaking.sol";
@@ -33,6 +33,7 @@ interface ILssGovernance {
     function rejectWallet(uint256 _reportId) external;
     function retrieveFunds(uint256 _reportId) external;
     function retrieveCompensation() external;
+    function retrieveCompensationForContract(address _account) external;
     function claimCommitteeReward(uint256 _reportId) external;
     function setCompensationAmount(uint256 _amount) external;
     function losslessClaim(uint256 _reportId) external;
